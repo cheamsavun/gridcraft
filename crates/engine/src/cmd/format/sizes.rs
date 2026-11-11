@@ -126,10 +126,19 @@ pub fn chars_to_points(c: f64) -> f64 {
 
 /// Approximate text width in points for autofit (no font metrics in the engine: average glyph
 /// widths for the default font; a front end with fonts measures instead, see `Session::text_width`).
+///
+/// Khmer stacks: a consonant after the coeng sign (U+17D2) is drawn under its base, so neither
+/// takes width, and most vowel signs sit above or below. Counting each as a full em made a wrapped
+/// Khmer cell's row about 2.5 times too tall.
 pub fn approx_text_width(text: &str, size: f32, bold: bool) -> f32 {
     let mut w = 0.0;
+    let mut after_coeng = false;
     for c in text.chars() {
+        let subscript = std::mem::replace(&mut after_coeng, c == '\u{17D2}');
         w += match c {
+            _ if subscript || c == '\u{17D2}' => 0.0,
+            '\u{1780}'..='\u{17B5}' | '\u{17E0}'..='\u{17E9}' => 0.8,
+            '\u{17B6}'..='\u{17D1}' | '\u{17D3}' | '\u{17DD}' => 0.3,
             'i' | 'l' | 'j' | '\'' | '.' | ',' | ':' | ';' | '!' | '|' => 0.28,
             'f' | 't' | 'r' | 'I' | ' ' | '(' | ')' | '-' => 0.38,
             'm' | 'w' | 'M' | 'W' => 0.85,

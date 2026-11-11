@@ -1,6 +1,6 @@
 # Localization parity
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-11-10 · **Change:** minor (Ukrainian Chart is Діаграма); previously minor (Diagram and Decorative Text labels, Diagram distinct from Chart); previously minor (CJK fallback baseline alignment); previously minor (Arabic bidi display, editing and cell reading direction; missing translations are listed by `cargo xtask i18n-report` and never fail a check); previously minor (Arabic font fallback; missing translations are listed by `cargo xtask i18n-report` and never fail a check); previously minor (number formats honour the `B1`/`B2` calendar prefixes, checked against Excel; earlier: missing translations are listed by `cargo xtask i18n-report` and never fail a check; Arabic text sorts by its letters, not its vowel marks); previously minor (AutoFit estimates Arabic text width from measured glyph widths); previously minor (missing translations are listed by `cargo xtask i18n-report` and never fail a check; Arabic text sorts by its letters, not its vowel marks) · **Target:** Microsoft Excel (Microsoft 365), Excel for Mac 16.113.4
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-11-11 · **Change:** minor (Khmer text falls back to an installed Khmer face and is shaped); previously minor (Ukrainian Chart is Діаграма); previously minor (Diagram and Decorative Text labels, Diagram distinct from Chart); previously minor (CJK fallback baseline alignment); previously minor (Arabic bidi display, editing and cell reading direction; missing translations are listed by `cargo xtask i18n-report` and never fail a check); previously minor (Arabic font fallback; missing translations are listed by `cargo xtask i18n-report` and never fail a check); previously minor (number formats honour the `B1`/`B2` calendar prefixes, checked against Excel; earlier: missing translations are listed by `cargo xtask i18n-report` and never fail a check; Arabic text sorts by its letters, not its vowel marks); previously minor (AutoFit estimates Arabic text width from measured glyph widths); previously minor (missing translations are listed by `cargo xtask i18n-report` and never fail a check; Arabic text sorts by its letters, not its vowel marks) · **Target:** Microsoft Excel (Microsoft 365), Excel for Mac 16.113.4
 
 Per-language status against Excel, which ships its UI in dozens of languages (Windows language
 packs cover 100+), with localized function names, argument separators, number and date formats,
@@ -69,7 +69,7 @@ Cell text now uses shared Unicode bidi layout while retaining logical source ind
   beyond Arabic still needs verification. **Sheet Right-to-Left**
   Leelawadee UI / DokChampa (Windows) or Noto Sans Lao / Phetsarath OT (Linux). Arabic falls back to a system Arabic face, fontconfig's
   Arabic choice or craft-fonts' Noto Sans Arabic; fontconfig's choice leads these fallbacks, but a UI font with Arabic of its
-  own (DejaVu Sans in the Flatpak) still draws interface Arabic (#229). There is no complex-text shaping: Arabic and
+  own (DejaVu Sans in the Flatpak) still draws interface Arabic (#229). Khmer falls back to Khmer Sangam MN / Khmer MN (macOS), Khmer UI / DaunPenh / MoolBoran (Windows) or Noto Sans Khmer / Khmer OS (Linux), and harfrust stacks and reorders it; the web build and PDF output have no Khmer face yet. There is no complex-text shaping: Arabic and
   Devanagari don't join or reorder, and there is no bidirectional layout. **Sheet Right-to-Left**
   (`view.rightToLeft`, Page Layout › Sheet Options, XLSX `rightToLeft`, `.xls` WINDOW2 fRightToLeft) mirrors the grid (#146):
   column A and the row headers on the right, the vertical scrollbar on the left; hit-testing,
@@ -133,6 +133,7 @@ language (none so far) and of localized function names.
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-11-11 | minor | Khmer text falls back to an installed Khmer face (`sys-khmer`) instead of tofu boxes, is shaped, and wrapped Khmer cells no longer get a row far too tall |
 | 2026-11-10 | minor | Ukrainian Chart is `Діаграма`, matching [craft-i18n#211](https://github.com/storytold/craft-i18n/pull/211) and distinct from Diagram (`Схема`) |
 | 2026-11-10 | minor | Diagram and Decorative Text labels in all 18 non-English catalogs; Diagram never repeats the catalog's chart word (German `Schema`, Ukrainian `Схема`, Romanian `Schemă`), see [feature-names.md](feature-names.md) |
 | 2026-10-31 | minor | System and embedded CJK text fallbacks share the Latin baseline in cells, editors and window titles; other scripts, symbols and emoji keep their alignment |

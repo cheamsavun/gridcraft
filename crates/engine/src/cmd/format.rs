@@ -827,6 +827,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn khmer_stacks_take_no_width_in_the_estimate() {
+        let em = 11.0 * 96.0 / 72.0;
+        // ម stacks under ក after the coeng, so the pair is as wide as ក alone.
+        assert_eq!(approx_text_width("ក្ម", 11.0, false), approx_text_width("ក", 11.0, false));
+        assert!(approx_text_width("កម", 11.0, false) > approx_text_width("ក្ម", 11.0, false));
+        assert_eq!(approx_text_width("ក\u{200B}ក", 11.0, false), approx_text_width("កក", 11.0, false), "zero-width space");
+        // A trailing coeng has nothing to stack and other scripts keep the full em.
+        assert_eq!(approx_text_width("\u{17D2}", 11.0, false), 0.0);
+        assert_eq!(approx_text_width("ท", 11.0, false), em);
+    }
+
+    #[test]
     fn merge_across_keeps_the_first_value_of_each_row() {
         let mut s = crate::Session::new();
         s.new_workbook();

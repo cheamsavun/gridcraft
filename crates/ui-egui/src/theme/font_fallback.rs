@@ -125,6 +125,7 @@ pub(super) fn fallback_faces(han: HanOrder) -> Vec<(&'static str, Vec<(String, u
         ("sys-cjk-hangul", cjk_hangul()),
         ("sys-thai", thai()),
         ("sys-lao", lao()),
+        ("sys-khmer", khmer()),
         ("sys-hebrew", hebrew()),
         ("sys-arabic", arabic()),
         ("sys-symbols", symbols()),
@@ -290,6 +291,30 @@ pub(super) fn lao() -> Vec<(String, u32)> {
         v.push((format!("{d}/lao/Phetsarath_OT.ttf"), 0));
         v.push((format!("{d}/Phetsarath_OT.ttf"), 0));
     }
+    v
+}
+
+/// Khmer faces. Windows ships Khmer UI (with DaunPenh and MoolBoran on older versions); macOS has
+/// Khmer Sangam MN and Khmer MN; Linux usually has Noto Sans Khmer or the Khmer OS family.
+#[cfg(not(target_arch = "wasm32"))]
+pub(super) fn khmer() -> Vec<(String, u32)> {
+    let mut v = script_fonts(
+        &["KhmerUI.ttf", "daunpenh.ttf", "moolbor.ttf"],
+        &["/System/Library/Fonts/Supplemental/Khmer Sangam MN.ttf", "/System/Library/Fonts/Supplemental/Khmer MN.ttc"],
+        &["NotoSansKhmer-Regular.ttf", "NotoSerifKhmer-Regular.ttf", "khmeros/KhmerOS.ttf", "khmeros/KhmerOSsys.ttf", "KhmerOS.ttf"],
+        // Fedora ships the variable Noto Sans Khmer; its default instance is Regular.
+        "/usr/share/fonts/google-noto-vf/NotoSansKhmer[wdth,wght].ttf",
+    );
+    // Arch's flat Noto folder, Fedora's per-family package folders and the Flatpak host mount.
+    let dirs = [
+        "/usr/share/fonts/noto",
+        "/usr/share/fonts/google-noto",
+        "/usr/share/fonts/khmeros",
+        "/usr/share/fonts/khmer-os",
+        "/run/host/fonts/truetype/noto",
+        "/run/host/fonts/noto",
+    ];
+    v.extend(in_dirs(&dirs, &["NotoSansKhmer-Regular.ttf", "KhmerOS.ttf", "KhmerOSsys.ttf", "KhmerOS_sys.ttf"]).into_iter().map(|p| (p, 0)));
     v
 }
 

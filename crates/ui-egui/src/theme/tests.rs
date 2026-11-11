@@ -122,11 +122,33 @@ fn language_reorders_only_the_han_faces() {
     let keys = |han| fallback_faces(han).into_iter().map(|(k, _)| k).collect::<Vec<_>>();
     assert_eq!(
         keys(HanOrder::Japanese),
-        ["sys-cjk-han-ja", "sys-cjk-han-zh", "sys-cjk-hangul", "sys-thai", "sys-lao", "sys-hebrew", "sys-arabic", "sys-symbols", "sys-symbols-2"]
+        [
+            "sys-cjk-han-ja",
+            "sys-cjk-han-zh",
+            "sys-cjk-hangul",
+            "sys-thai",
+            "sys-lao",
+            "sys-khmer",
+            "sys-hebrew",
+            "sys-arabic",
+            "sys-symbols",
+            "sys-symbols-2"
+        ]
     );
     assert_eq!(
         keys(HanOrder::Chinese),
-        ["sys-cjk-han-zh", "sys-cjk-han-ja", "sys-cjk-hangul", "sys-thai", "sys-lao", "sys-hebrew", "sys-arabic", "sys-symbols", "sys-symbols-2"]
+        [
+            "sys-cjk-han-zh",
+            "sys-cjk-han-ja",
+            "sys-cjk-hangul",
+            "sys-thai",
+            "sys-lao",
+            "sys-khmer",
+            "sys-hebrew",
+            "sys-arabic",
+            "sys-symbols",
+            "sys-symbols-2"
+        ]
     );
     assert_eq!(HanOrder::of(Language::Ja), HanOrder::Japanese);
     for l in [Language::En, Language::Zh, Language::Ko, Language::Ru, Language::PtBr, Language::De, Language::Cs, Language::Fr, Language::Tr] {
@@ -185,7 +207,7 @@ fn fallback_covers_its_script() {
     // face or the optional craft-fonts input provides one; the printed skip is a recorded
     // gate, and a present face that is not wired in fails.
     type Case = (&'static str, Vec<(String, u32)>, &'static str);
-    let cases: [Case; 11] = [
+    let cases: [Case; 12] = [
         ("sys-cjk-han-ja", cjk_han_japanese(), "カテゴリ"),
         // Chinese uses a system Han face or the native-only permitted LXGW craft face; the
         // barred Noto CJK collection never supplies it.
@@ -193,6 +215,7 @@ fn fallback_covers_its_script() {
         ("sys-cjk-hangul", cjk_hangul(), "한글"),
         ("sys-thai", thai(), "ทดสอบ"),
         ("sys-lao", lao(), "ພາສາລາວ"),
+        ("sys-khmer", khmer(), "ភាសាខ្មែរ"),
         ("sys-hebrew", hebrew(), "עברית"),
         ("sys-arabic", arabic(), "العربية١٢٣"),
         ("craft-noto-sans-arabic", Vec::new(), "مرحبا"),
@@ -351,6 +374,35 @@ fn the_fontconfig_arabic_choice_comes_first() {
         }
         if let (Some(preferred), Some(system)) = (fonts.font_data.get(PREFERRED_ARABIC), fonts.font_data.get("sys-arabic")) {
             assert!((*preferred.font).as_ref() != (*system.font).as_ref(), "the system Arabic fallback is a different file from the preferred face");
+        }
+    }
+}
+
+#[test]
+/// Khmer is shaped, not drawn letter by letter: a subscript stacks under its base, and wrapping never separates the two.
+fn khmer_is_shaped_and_wraps_between_stacks() {
+    if !khmer().iter().any(|(p, _)| std::path::Path::new(p).exists()) && !craft_fonts_cover("កម្ពុជា") {
+        eprintln!("skipped khmer shaping: no system face and no craft-fonts face");
+        return;
+    }
+    let ctx = egui::Context::default();
+    ctx.set_fonts(font_definitions());
+    let mut out = ctx.run_ui(egui::RawInput::default(), |_ui| {});
+    out.textures_delta.clear(); // nothing consumes the atlas in a headless test
+    let font = FontId::new(14.0, FontFamily::Name(CELL.into()));
+    let width = |text: &str| ctx.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x);
+    assert!(width("ក្ម") < width("កម") - 1.0, "the coeng must stack ម under ក: {} vs {}", width("ក្ម"), width("កម"));
+
+    let text = "ព្រះរាជាណាចក្រកម្ពុជាជាតិសាសនាព្រះមហាក្សត្រស្ត្រីខ្ញុំស្រឡាញ់";
+    let chars: Vec<char> = text.chars().collect();
+    for wrap in (20..300).step_by(3) {
+        let job = egui::text::LayoutJob::simple(text.to_owned(), font.clone(), Color32::PLACEHOLDER, wrap as f32);
+        let galley = ctx.fonts_mut(|f| f.layout_job(job));
+        let mut at = 0usize;
+        for row in &galley.rows {
+            let before = at.checked_sub(1).and_then(|i| chars.get(i));
+            assert_ne!(before, Some(&'\u{17D2}'), "wrap {wrap} split a subscript from its base at char {at}");
+            at += row.char_count_including_newline().0;
         }
     }
 }
