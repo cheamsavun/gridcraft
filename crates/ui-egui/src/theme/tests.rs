@@ -393,6 +393,15 @@ fn khmer_is_shaped_and_wraps_between_stacks() {
     let width = |text: &str| ctx.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x);
     assert!(width("ក្ម") < width("កម") - 1.0, "the coeng must stack ម under ក: {} vs {}", width("ក្ម"), width("កម"));
 
+    // A Khmer line grows to the Khmer face's height, so a stacked subscript and a vowel below
+    // it never run into the next wrapped line; it shares the Latin baseline in mixed text.
+    let row = |text: &str| ctx.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), font.clone(), Color32::PLACEHOLDER).rows[0].clone());
+    let (latin, khmer_row, mixed) = (row("Mg"), row("កម្ពុជា"), row("M កម្ពុជា"));
+    eprintln!("line heights at 14px: latin {} khmer {}", latin.size.y, khmer_row.size.y);
+    assert!(khmer_row.size.y > latin.size.y + 1.0, "Khmer line {} must be taller than Latin {}", khmer_row.size.y, latin.size.y);
+    let baseline = |r: &egui::epaint::text::PlacedRow, c: char| r.glyphs.iter().find(|g| g.chr == c).map(|g| g.pos.y);
+    assert_eq!(baseline(&mixed, 'M'), baseline(&mixed, 'ក'), "Khmer shares the Latin baseline");
+
     let text = "ព្រះរាជាណាចក្រកម្ពុជាជាតិសាសនាព្រះមហាក្សត្រស្ត្រីខ្ញុំស្រឡាញ់";
     let chars: Vec<char> = text.chars().collect();
     for wrap in (20..300).step_by(3) {

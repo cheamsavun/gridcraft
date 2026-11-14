@@ -36,8 +36,10 @@ pub(super) fn load_faces(fonts: &mut FontDefinitions, faces: Vec<(&'static str, 
                 break; // a face loaded for an earlier script already covers this one
             }
             if let Some(mut fd) = try_load(&[(path.as_str(), *index)]) {
-                // CJK text shares the Latin baseline; symbols and emoji keep box centering.
-                fd.tweak.set_baseline_fallback(key.starts_with("sys-cjk-"));
+                // CJK and Khmer text share the Latin baseline, and their lines grow to fit the
+                // face's ascent and descent (Khmer stacks subscripts and vowels below the
+                // baseline); symbols and emoji keep box centering.
+                fd.tweak.set_baseline_fallback(key.starts_with("sys-cjk-") || key == "sys-khmer");
                 fonts.font_data.insert(key.to_string(), Arc::new(fd));
                 keys.push(key.to_string());
                 loaded.push(path.clone());

@@ -16,13 +16,13 @@ pub struct CraftFont {
 }
 
 impl CraftFont {
-    /// CJK fallback faces share the primary baseline; symbols keep their centered metrics.
+    /// CJK and Khmer fallback faces share the primary baseline; symbols keep their centered metrics.
     fn font_data(&self) -> FontData {
         let mut data = FontData::from_static(self.bytes);
         data.tweak.set_baseline_fallback(
             self.scripts
                 .iter()
-                .any(|script| matches!(*script, "Hani" | "Hans" | "Hant" | "Jpan" | "Hira" | "Kana" | "Hrkt" | "Hang" | "Kore" | "Bopo")),
+                .any(|script| matches!(*script, "Hani" | "Hans" | "Hant" | "Jpan" | "Hira" | "Kana" | "Hrkt" | "Hang" | "Kore" | "Bopo" | "Khmr")),
         );
         data
     }

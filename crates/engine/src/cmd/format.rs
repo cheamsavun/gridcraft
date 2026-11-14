@@ -819,7 +819,7 @@ mod sizes;
 
 use cell_styles::cell_style;
 pub use cell_styles::{CELL_STYLE_NAMES, builtin_cell_style};
-pub use sizes::{approx_text_width, chars_to_points};
+pub use sizes::{approx_text_width, chars_to_points, line_height_ems};
 use sizes::{autofit_cols, autofit_rows, col_width, default_width, hide, row_height};
 
 #[cfg(test)]
@@ -832,6 +832,8 @@ mod tests {
         // ម stacks under ក after the coeng, so the pair is as wide as ក alone.
         assert_eq!(approx_text_width("ក្ម", 11.0, false), approx_text_width("ក", 11.0, false));
         assert!(approx_text_width("កម", 11.0, false) > approx_text_width("ក្ម", 11.0, false));
+        // The subscript ro is drawn before its base, so it takes width.
+        assert!(approx_text_width("ក្រ", 11.0, false) > approx_text_width("ក", 11.0, false));
         assert_eq!(approx_text_width("ក\u{200B}ក", 11.0, false), approx_text_width("កក", 11.0, false), "zero-width space");
         // A trailing coeng has nothing to stack and other scripts keep the full em.
         assert_eq!(approx_text_width("\u{17D2}", 11.0, false), 0.0);

@@ -124,18 +124,30 @@ pub fn chars_to_points(c: f64) -> f64 {
     }
 }
 
+/// Height of one drawn line of `text`, in ems of its font size, for fitting a row: `None` when the
+/// text fits the line of its own (Latin) font. Khmer draws through a fallback face whose line is
+/// about twice the em (Khmer Sangam MN measures 2.0 em in the UI; Khmer UI and Noto Sans Khmer
+/// are similar), because subscript consonants and vowel signs stack below the baseline and some
+/// vowels rise above it. A row sized for the Latin line cuts those stacks off.
+pub fn line_height_ems(text: &str) -> Option<f32> {
+    text.chars().any(|c| matches!(c, '\u{1780}'..='\u{17FF}' | '\u{19E0}'..='\u{19FF}')).then_some(2.0)
+}
+
 /// Approximate text width in points for autofit (no font metrics in the engine: average glyph
 /// widths for the default font; a front end with fonts measures instead, see `Session::text_width`).
 ///
 /// Khmer stacks: a consonant after the coeng sign (U+17D2) is drawn under its base, so neither
-/// takes width, and most vowel signs sit above or below. Counting each as a full em made a wrapped
-/// Khmer cell's row about 2.5 times too tall.
+/// takes width (except the subscript ro, which sits before its base), and most vowel signs sit
+/// above or below. Counting each as a full em made a wrapped Khmer cell's row about 2.5 times too
+/// tall.
 pub fn approx_text_width(text: &str, size: f32, bold: bool) -> f32 {
     let mut w = 0.0;
     let mut after_coeng = false;
     for c in text.chars() {
         let subscript = std::mem::replace(&mut after_coeng, c == '\u{17D2}');
         w += match c {
+            // The subscript ro is drawn before its base and takes width; the others stack below.
+            '\u{179A}' if subscript => 0.35,
             _ if subscript || c == '\u{17D2}' => 0.0,
             '\u{1780}'..='\u{17B5}' | '\u{17E0}'..='\u{17E9}' => 0.8,
             '\u{17B6}'..='\u{17D1}' | '\u{17D3}' | '\u{17DD}' => 0.3,

@@ -700,6 +700,26 @@ fn same_content(a: Option<&gridcraft_model::Cell>, b: Option<&gridcraft_model::C
     }
 }
 
+/// A word split where a line may break: before each character, except before one that joins
+/// the previous character, i.e. a Khmer sign or a consonant stacked after the coeng (U+17D2).
+fn clusters(word: &str) -> impl Iterator<Item = &str> {
+    let mut rest = word;
+    std::iter::from_fn(move || {
+        let mut prev = None;
+        let end = rest
+            .char_indices()
+            .find(|&(i, c)| {
+                let joins = matches!(c, '\u{17B4}'..='\u{17D3}' | '\u{17DD}') || prev == Some('\u{17D2}');
+                prev = Some(c);
+                i > 0 && !joins
+            })
+            .map_or(rest.len(), |(i, _)| i);
+        let (head, tail) = rest.split_at_checked(end)?;
+        rest = tail;
+        (!head.is_empty()).then_some(head)
+    })
+}
+
 /// Lines a single text line needs when word-wrapped into `width` points. The grid wraps whole
 /// words (egui's LayoutJob), so dividing the total width by the column width undercounts: each
 /// drawn line ends early at the last word that fits. A word wider than the column breaks
@@ -712,13 +732,21 @@ fn wrapped_line_count(line: &str, width: f32, size: f32, bold: bool) -> f32 {
     for word in line.split_whitespace() {
         let w = word_w(word);
         if w > width {
-            // wider than the column: egui fills the current line, then breaks it across lines
+            // Wider than the column: egui fills the current line, then breaks the word between
+            // clusters, so each line ends at the last whole cluster that fits. Khmer clusters are
+            // wide and a Khmer phrase has no spaces, so dividing the width undercounts its lines.
             if used > 0.0 {
                 lines += 1.0;
             }
-            let chunks = (w / width).ceil();
-            lines += chunks - 1.0;
-            used = w - (chunks - 1.0) * width;
+            used = 0.0;
+            for cluster in clusters(word) {
+                let cw = word_w(cluster);
+                if used > 0.0 && used + cw > width {
+                    lines += 1.0;
+                    used = 0.0;
+                }
+                used += cw;
+            }
             continue;
         }
         let gap = if used > 0.0 { space_w } else { 0.0 };
@@ -831,10 +859,13 @@ pub(crate) fn fit_row_height(wb: &mut Workbook, si: usize, row: u32, sweep: &mut
         return;
     }
     let default = sh.default_row_height;
-    // Fast path: rows of default-size, unwrapped content keep the default height.
+    // Fast path: rows of default-size, unwrapped content in scripts that fit the Latin line keep
+    // the default height.
     let plain = sh.cells.row(row, 0, gridcraft_core::MAX_COLS - 1).all(|(_, cell)| {
         let st = wb.styles.get(cell.style);
-        st.font.size <= gridcraft_model::DEFAULT_FONT_SIZE && !st.align.wrap
+        st.font.size <= gridcraft_model::DEFAULT_FONT_SIZE
+            && !st.align.wrap
+            && cell.value.as_text().and_then(crate::cmd::format::line_height_ems).is_none()
     });
     if plain {
         if sh.rows.get(&row).is_some_and(|i| i.size.is_some())
@@ -884,7 +915,12 @@ pub(crate) fn fit_row_height(wb: &mut Workbook, si: usize, row: u32, sweep: &mut
         } else if st.font.size <= gridcraft_model::DEFAULT_FONT_SIZE {
             continue;
         }
-        let h = if lines > 1.0 { (size * 96.0 / 72.0 * 1.22 * lines + 5.0).ceil() } else { line };
+        // Khmer stacks need a taller line than the font's own (see `line_height_ems`).
+        let h = match cell.value.as_text().and_then(crate::cmd::format::line_height_ems) {
+            Some(ems) => (size * 96.0 / 72.0 * ems * lines + 3.0).ceil().max(line),
+            None if lines > 1.0 => (size * 96.0 / 72.0 * 1.22 * lines + 5.0).ceil(),
+            None => line,
+        };
         need = need.max(h.min(546.0));
     }
     let Some(shm) = wb.sheet_mut(si) else { return };
@@ -904,6 +940,23 @@ impl Ctx<'_> {
     }
     pub fn touch(&mut self, sheet: usize, c: CellRef) {
         self.changed.push((sheet, c));
+    }
+}
+
+#[cfg(test)]
+mod wrap_tests {
+    use super::*;
+
+    #[test]
+    fn khmer_words_break_between_clusters() {
+        let parts: Vec<&str> = clusters("ព្រះរាជា").collect();
+        assert_eq!(parts, ["ព្រះ", "រា", "ជា"]);
+        assert_eq!(clusters("abc").collect::<Vec<_>>(), ["a", "b", "c"]);
+        assert_eq!(clusters("\u{17D2}").collect::<Vec<_>>(), ["\u{17D2}"], "a lone coeng is its own cluster");
+        assert_eq!(clusters("").count(), 0);
+        // A cluster never fits part-way, so a line holds fewer of them than the width alone allows.
+        let one = crate::cmd::format::approx_text_width("ព្រះ", 11.0, false);
+        assert!(wrapped_line_count("ព្រះព្រះព្រះ", one * 1.5, 11.0, false) >= 3.0);
     }
 }
 
